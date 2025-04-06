@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sugar Mines 🍬</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Comic Sans MS', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #000000;
+      color: #d543b5;
+      padding: 20px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    #controls {
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    input {
+      width: 60px;
+      text-align: center;
+      margin: 5px 5px;
+      padding: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    #game {
+      display: grid;
+      grid-gap: 8px;
+      margin: 20px 0;
+    }
+
+    .tile {
+      width: 60px;
+      height: 60px;
+      background-color: #ffcad4;
+      border: 2px solid #fff;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .tile:hover {
+      background-color: #ac2043;
+    }
+
+    .revealed {
+      cursor: default;
+    }
+
+    .ant {
+      background-color: #ff6b6b;
+    }
+
+    #score, #multiplier, #probability, #cashoutMessage, #balanceDisplay {
+      margin: 5px 0;
+      font-size: 18px;
+    }
+
+    button {
+      margin: 5px 5px;
+      padding: 10px 15px;
+      font-size: 16px;
+      background-color: #ffb3c1;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #ffa3b1;
+    }
+
+    #bubbleTrail {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .bubble {
+      position: absolute;
+      bottom: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      opacity: 0.8;
+      animation: float 3s ease-out forwards;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+    }
+
+    @keyframes float {
+      0% {
+        transform: translateY(0) scale(1);
+        opacity: 0.9;
+      }
+      100% {
+        transform: translateY(-250px) scale(1.5);
+        opacity: 0;
+      }
+    }
+
+    /* Starry Background */
+    #stars {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: -1;
+    }
+
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      opacity: 0.8;
+      animation: twinkle 2s infinite ease-in-out;
+    }
+
+    @keyframes twinkle {
+      0%, 100% {
+        opacity: 0.2;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.3);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>🍬 Sugar Mines 🐜</h1>
+
+  <div id="controls">
+    Grid Size: <input type="number" id="gridSizeInput" value="5" min="2" max="10" />
+    Mines: <input type="number" id="minesInput" value="5" min="1" />
+    Bet: $<input type="number" id="betInput" value="10" min="1" />
+    <button id="restart">Start Game</button>
+    <br>
+    <div id="balanceDisplay">Balance: $0</div>
+
+    <div>
+      Add Balance: $<input type="number" id="addBalanceInput" value="10" min="1" />
+      Code: <input type="password" id="lockCodeInput" placeholder="Code" />
+      <button id="addBalanceBtn">➕ Add</button>
+    </div>
+  </div>
+
+  <div id="score">Score: 0</div>
+  <div id="multiplier">Multiplier: 1x</div>
+  <div id="probability"></div>
+  <div id="game"></div>
+  <button id="cashout">💰 Cash Out</button>
+  <div id="cashoutMessage"></div>
+
+  <div id="bubbleTrail"></div>
+  <div id="stars"></div>
+
+  <audio id="clickSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_3d8ad877ba.mp3?filename=button-124476.mp3"></audio>
+  <audio id="explosionSound" src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_352ba9e0f6.mp3?filename=explosion-6055.mp3"></audio>
+  <audio id="cashoutSound" src="https://cdn.pixabay.com/download/audio/2022/03/24/audio_7679cc52f5.mp3?filename=coin-win-5791.mp3"></audio>
+
+  <script>
+    const game = document.getElementById('game');
+    const scoreDisplay = document.getElementById('score');
+    const multiplierDisplay = document.getElementById('multiplier');
+    const probabilityDisplay = document.getElementById('probability');
+    const cashoutMessage = document.getElementById('cashoutMessage');
+    const restartBtn = document.getElementById('restart');
+    const cashoutBtn = document.getElementById('cashout');
+    const gridSizeInput = document.getElementById('gridSizeInput');
+    const minesInput = document.getElementById('minesInput');
+    const bubbleTrail = document.getElementById('bubbleTrail');
+    const balanceDisplay = document.getElementById('balanceDisplay');
+    const betInput = document.getElementById('betInput');
+    const addBalanceBtn = document.getElementById('addBalanceBtn');
+    const addBalanceInput = document.getElementById('addBalanceInput');
+    const lockCodeInput = document.getElementById('lockCodeInput');
+
+    const clickSound = document.getElementById('clickSound');
+    const explosionSound = document.getElementById('explosionSound');
+    const cashoutSound = document.getElementById('cashoutSound');
+
+    let score = 0;
+    let multiplier = 1;
+    let totalTiles = 0;
+    let numMines = 0;
+    let safeRevealed = 0;
+    let gameOver = false;
+    let bubbleInterval = null;
+
+    let balance = parseFloat(localStorage.getItem('sugarBalance')) || 100;
+    balanceDisplay.textContent = `Balance: $${balance.toFixed(2)}`;
+    const LOCK_CODE = "1234";
+
+    function createBubble() {
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      const pastelColors = ['#e6f7ff', '#ccf2ff', '#b3ecff', '#99e6ff', '#80dfff'];
+      bubble.style.background = pastelColors[Math.floor(Math.random() * pastelColors.length)];
+      bubble.style.width = `${15 + Math.random() * 20}px`;
+      bubble.style.height = bubble.style.width;
+      bubble.style.left = `${Math.random() * window.innerWidth}px`;
+      bubbleTrail.appendChild(bubble);
+      setTimeout(() => bubble.remove(), 3000);
+    }
+
+    function factorial(n) {
+      if (n === 0 || n === 1) return 1;
+      let result = 1;
+      for (let i = 2; i <= n; i++) result *= i;
+      return result;
+    }
+
+    function combination(n, k) {
+      if (k > n) return 0;
+      return factorial(n) / (factorial(k) * factorial(n - k));
+    }
+
+    function minesPayout(k, houseEdge = 0.04) {
+      const gridSize = parseInt(gridSizeInput.value);
+      const totalTiles = gridSize * gridSize;
+      const mines = parseInt(minesInput.value);
+      if (k < 0 || k > totalTiles - mines) return { error: "Invalid k" };
+      const fairPayout = combination(totalTiles, k) / combination(totalTiles - mines, k);
+      const stakePayout = fairPayout * (1 - houseEdge);
+      return {
+        openedTiles: k,
+        fairPayout: parseFloat(fairPayout.toFixed(6)),
+        stakePayout: parseFloat(stakePayout.toFixed(6))
+      };
+    }
+
+    function createBoard() {
+      const gridSize = parseInt(gridSizeInput.value);
+      numMines = parseInt(minesInput.value);
+      totalTiles = gridSize * gridSize;
+      const betAmount = parseFloat(betInput.value);
+
+      if (betAmount > balance) {
+        alert("Not enough balance to place this bet.");
+        return;
+      }
+
+      if (numMines >= totalTiles) {
+        alert('Number of mines must be less than total tiles!');
+        return;
+      }
+
+      balance -= betAmount;
+      localStorage.setItem('sugarBalance', balance);
+      balanceDisplay.textContent = `Balance: $${balance.toFixed(2)}`;
+
+      game.innerHTML = '';
+      score = 0;
+      multiplier = 1;
+      safeRevealed = 0;
+      gameOver = false;
+      cashoutMessage.textContent = '';
+      probabilityDisplay.textContent = '';
+      scoreDisplay.textContent = 'Score: 0';
+      multiplierDisplay.textContent = 'Multiplier: 1x';
+
+      clearInterval(bubbleInterval);
+      bubbleInterval = setInterval(createBubble, 300);
+
+      game.style.gridTemplateColumns = `repeat(${gridSize}, 60px)`;
+      let tiles = Array(totalTiles).fill('sugar');
+      let minePositions = [];
+
+      while (minePositions.length < numMines) {
+        let pos = Math.floor(Math.random() * totalTiles);
+        if (!minePositions.includes(pos)) {
+          minePositions.push(pos);
+          tiles[pos] = 'ant';
+        }
+      }
+
+      for (let i = 0; i < totalTiles; i++) {
+        const tile = document.createElement('div');
+        tile.classList.add('tile');
+        tile.dataset.type = tiles[i];
+        tile.addEventListener('click', () => handleClick(tile));
+        game.appendChild(tile);
+      }
+    }
+
+    function handleClick(tile) {
+      if (gameOver || tile.classList.contains('revealed')) return;
+      tile.classList.add('revealed');
+
+      if (tile.dataset.type === 'ant') {
+        tile.textContent = '🐜';
+        tile.classList.add('ant');
+        gameOver = true;
+        clearInterval(bubbleInterval);
+        explosionSound.play();
+        scoreDisplay.textContent = `Game Over! Final Score: ${score}`;
+        multiplierDisplay.textContent = `Final Multiplier: ${multiplier.toFixed(2)}x`;
+      } else {
+        tile.textContent = '🍬';
+        clickSound.play();
+        score++;
+        safeRevealed++;
+        const payout = minesPayout(safeRevealed);
+        multiplier = payout.stakePayout;
+        scoreDisplay.textContent = 'Score: ' + score;
+        multiplierDisplay.textContent = 'Multiplier: ' + multiplier.toFixed(2) + 'x';
+        probabilityDisplay.innerHTML = `
+          🧠 Fair Payout: ${payout.fairPayout}x<br>
+          🎯 Stake Payout (w/ 4% house edge): ${payout.stakePayout}x
+        `;
+      }
+    }
+
+    function cashOut() {
+      if (gameOver || score === 0) return;
+      gameOver = true;
+      clearInterval(bubbleInterval);
+      cashoutSound.play();
+
+      const winnings = parseFloat(betInput.value) * multiplier;
+      balance += winnings;
+      localStorage.setItem('sugarBalance', balance);
+      balanceDisplay.textContent = `Balance: $${balance.toFixed(2)}`;
+
+      confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
+      cashoutMessage.textContent = `🎉 You cashed out with ${score} candies and a $${winnings.toFixed(2)} payout!`;
+    }
+
+    addBalanceBtn.addEventListener('click', () => {
+      const code = lockCodeInput.value;
+      const addAmount = parseFloat(addBalanceInput.value);
+      if (code !== "1234") {
+        alert("Incorrect code!");
+        return;
+      }
+      if (!isNaN(addAmount) && addAmount > 0) {
+        balance += addAmount;
+        localStorage.setItem('sugarBalance', balance);
+        balanceDisplay.textContent = `Balance: $${balance.toFixed(2)}`;
+        alert(`Added $${addAmount} successfully!`);
+      } else {
+        alert("Invalid amount!");
+      }
+    });
+
+    restartBtn.addEventListener('click', createBoard);
+    cashoutBtn.addEventListener('click', cashOut);
+
+    function generateStars(count = 150) {
+      const starsContainer = document.getElementById('stars');
+      for (let i = 0; i < count; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        const size = Math.random() * 2 + 1;
+        star.style.width = `${size}px`;
+        star.style.height = `${size}px`;
+        star.style.top = `${Math.random() * 100}%`;
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.animationDuration = `${2 + Math.random() * 3}s`;
+        starsContainer.appendChild(star);
+      }
+    }
+
+    generateStars();
+  </script>
+</body>
+</html>

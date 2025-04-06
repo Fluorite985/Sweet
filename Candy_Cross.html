@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Candy Cross</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #ADD8E6;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 40px;
+      padding-top: 40px;
+    }
+    h1 {
+      color: black;
+      text-align: center;
+      width: 100%;
+      margin-bottom: 10px;
+      font-size: 2rem;
+    }
+    #game-container {
+      position: relative;
+      width: 600px;
+      height: 700px;
+      border: 3px solid #ffffff;
+      background-color: #1a1a1a;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+    #game-world {
+      position: absolute;
+      width: 100%;
+      transition: transform 0.2s ease;
+      z-index: 1;
+    }
+    #player {
+      width: 40px;
+      height: 40px;
+      background-image: url('coffee-cup.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      position: absolute;
+      left: 280px;
+      z-index: 10;
+      transition: top 0.2s;
+    }
+    .lane {
+      width: 100%;
+      height: 50px;
+      box-sizing: border-box;
+      border-top: 3px solid white;
+      position: absolute;
+      background-color: #2c2c2c;
+      background-image: linear-gradient(90deg, #2c2c2c 90%, #333 100%);
+    }
+    .lane::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: repeating-linear-gradient(to right, white 0, white 20px, transparent 20px, transparent 40px);
+      transform: translateY(-50%);
+      opacity: 0.7;
+    }
+    .obstacle, .sugar-cube {
+      position: absolute;
+      z-index: 5;
+    }
+    .obstacle {
+      width: 40px;
+      height: 30px;
+      background-image: url('/ant-obstacle.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    .sugar-cube {
+      width: 20px;
+      height: 20px;
+      background-image: url('/minecraft-sugar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
+    #stats-box {
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid #00ffff;
+      border-radius: 10px;
+      color: white;
+      font-weight: bold;
+      padding: 12px 24px;
+      margin-bottom: 20px;
+      text-align: center;
+      box-shadow: 0 0 12px #00ffff;
+      backdrop-filter: blur(6px);
+    }
+    #stats-box span {
+      margin: 0 6px;
+      font-weight: bold;
+    }
+    #controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(0,0,0,0.7);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #000;
+    }
+    .ctrl-btn {
+      font-size: 16px;
+      padding: 12px 20px;
+      background-color: #000000;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .ctrl-btn:hover {
+      background-color: #222;
+      transform: scale(1.05);
+      box-shadow: 0 0 8px white;
+    }
+    #game-over-screen, #pause-menu {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: #ffffff;
+      padding: 20px;
+      border: 3px solid #000000;
+      text-align: center;
+      z-index: 100;
+      animation: flash 0.5s alternate 6;
+    }
+    @keyframes flash {
+      from { background-color: #ffffff; }
+      to { background-color: #ffe; }
+    }
+    @keyframes ant-runover {
+      from { left: -40px; }
+      to { left: 600px; }
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <h1>Candy Cross</h1>
+
+    <div id="stats-box">
+      💰 Bank: $<span id="bank">0</span> |
+      🪙 Money: $<span id="money">0</span> |
+      ✨ Multiplier: <span id="multiplier">1.0</span>x
+    </div>
+
+    <div id="game-container">
+      <div id="game-world">
+        <div id="player"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button class="ctrl-btn" onclick="movePlayer({key: 'ArrowDown'})">⬇️ Down</button>
+    <button class="ctrl-btn" onclick="togglePause()">⏸️ Pause</button>
+    <button class="ctrl-btn" onclick="cashOut()">💰 Cash Out</button>
+    <button class="ctrl-btn" onclick="fullRestart()">🔁 Restart Game</button>
+  </div>
+
+  <div id="pause-menu">
+    <h2>Game Paused</h2>
+    <button onclick="togglePause()">Resume</button>
+  </div>
+
+  <div id="game-over-screen">
+    <h2>Game Over</h2>
+    <p>You lost your money this round!</p>
+    <button onclick="restartGame()">Try Again</button>
+  </div>
+
+  <script>
+    let player, gameWorld, bankDisplay, moneyDisplay, multiplierDisplay;
+    let gameOverScreen, pauseMenu;
+    let gameActive, money, initialMoney, bank, multiplier, speed, playerLane, moving = false, paused = false;
+    let maxLaneReached, obstacles = [], sugarCubes = [], obstacleIntervals = [], sugarIntervals = [];
+    let laneCount = 0;
+    const laneHeight = 50;
+
+    const sugarConfig = {
+      spawnPerLane: 1,
+      enabled: (laneIndex) => laneIndex >= 0
+    };
+
+    const sounds = {
+      collect: new Audio('/collect.mp3'),
+      cashout: new Audio('/cashout.mp3'),
+      fail: new Audio('/fail.mp3'),
+      move: new Audio('/move.mp3'),
+    };
+
+    function playSound(audio) {
+      const sound = audio.cloneNode();
+      sound.volume = 1.0;
+      sound.play().catch(e => console.warn("Sound play blocked or failed", e));
+    }
+
+    window.onload = () => {
+      document.addEventListener("keydown", movePlayer);
+      initGame();
+    };
+
+    function initGame() {
+      player = document.getElementById("player");
+      gameWorld = document.getElementById("game-world");
+      bankDisplay = document.getElementById("bank");
+      moneyDisplay = document.getElementById("money");
+      multiplierDisplay = document.getElementById("multiplier");
+      gameOverScreen = document.getElementById("game-over-screen");
+      pauseMenu = document.getElementById("pause-menu");
+
+      bank = parseFloat(localStorage.getItem("bank")) || 100;
+      let input = prompt("How much money do you want to bet from your bank?", "10");
+      initialMoney = parseFloat(input);
+      if (isNaN(initialMoney) || initialMoney <= 0 || initialMoney > bank) initialMoney = 10;
+      money = initialMoney;
+      bank -= initialMoney;
+      localStorage.setItem("bank", bank);
+      multiplier = 1.0;
+
+      updateDisplays();
+
+      gameActive = true;
+      paused = false;
+      speed = 3;
+      playerLane = 0;
+      maxLaneReached = 0;
+      laneCount = 0;
+
+      const playerElement = document.getElementById("player");
+      gameWorld.innerHTML = '';
+      gameWorld.appendChild(playerElement);
+
+      for (let i = playerLane + 1; i <= playerLane + 50; i++) {
+        addLane(i);
+      }
+
+      updatePlayerPosition();
+    }
+
+    function updateDisplays() {
+      bankDisplay.innerText = bank.toFixed(2);
+      moneyDisplay.innerText = money.toFixed(2);
+      multiplierDisplay.innerText = multiplier.toFixed(1);
+    }
+
+    function cashOut() {
+      if (!gameActive) return;
+      playSound(sounds.cashout);
+      const payout = money;
+      bank += payout;
+      localStorage.setItem("bank", bank);
+      updateDisplays();
+      alert(`You cashed out $${payout.toFixed(2)}!`);
+      gameActive = false;
+      restartGame();
+    }
+
+    function addLane(laneIndex) {
+      const lane = document.createElement('div');
+      lane.classList.add('lane');
+      lane.style.top = (laneIndex * laneHeight) + 'px';
+      gameWorld.appendChild(lane);
+
+      if (sugarConfig.enabled(laneIndex)) {
+        const sugar = document.createElement('div');
+        sugar.classList.add('sugar-cube');
+        const playerLeft = player.offsetLeft;
+        sugar.style.left = `${playerLeft}px`;
+        sugar.style.top = (laneIndex * laneHeight + 15) + 'px';
+        gameWorld.appendChild(sugar);
+        sugarCubes.push(sugar);
+
+        const checkCollection = setInterval(() => {
+          if (!gameActive || paused) return;
+          if (collision(player, sugar)) {
+            playSound(sounds.collect);
+            money += 1;
+            moneyDisplay.innerText = money.toFixed(2);
+            sugar.remove();
+            sugarCubes = sugarCubes.filter(s => s !== sugar);
+            clearInterval(checkCollection);
+          }
+        }, 50);
+        sugarIntervals.push(checkCollection);
+      }
+    }
+
+    function createObstacleAtPlayer() {
+      const obstacle = document.createElement('div');
+      obstacle.classList.add('obstacle');
+      obstacle.style.top = (playerLane * laneHeight + 10) + 'px';
+      obstacle.style.left = '-40px';
+      obstacle.style.animation = 'ant-runover 1s linear forwards';
+      gameWorld.appendChild(obstacle);
+
+      playSound(sounds.fail);
+      gameActive = false;
+      moving = true;
+      player.style.opacity = '0.5';
+
+      setTimeout(() => endGame(), 1000);
+    }
+
+    function togglePause() {
+      paused = !paused;
+      pauseMenu.style.display = paused ? 'block' : 'none';
+    }
+
+    function updatePlayerPosition() {
+      player.style.top = (playerLane * laneHeight) + 'px';
+      gameWorld.style.transform = `translateY(${350 - playerLane * laneHeight}px)`;
+
+      if (playerLane > maxLaneReached) {
+        maxLaneReached = playerLane;
+        multiplier *= 1.1;
+        money = initialMoney * multiplier;
+        updateDisplays();
+
+        for (let i = laneCount + 1; i <= playerLane + 30; i++) {
+          addLane(i);
+        }
+        laneCount = playerLane + 30;
+
+        if (Math.random() < 0.2) {
+          createObstacleAtPlayer();
+        }
+      }
+    }
+
+    function movePlayer(e) {
+      if (!gameActive || paused || moving) return;
+      if (e.key === 'ArrowDown') {
+        moving = true;
+        playSound(sounds.move);
+        playerLane++;
+        updatePlayerPosition();
+        setTimeout(() => { if (gameActive) moving = false; }, 200);
+      }
+    }
+
+    function collision(el1, el2) {
+      let r1 = el1.getBoundingClientRect();
+      let r2 = el2.getBoundingClientRect();
+      return !(r1.right < r2.left || r1.left > r2.right || r1.bottom < r2.top || r1.top > r2.bottom);
+    }
+
+    function endGame() {
+      gameOverScreen.style.display = 'block';
+      updateDisplays();
+    }
+
+    function restartGame() {
+      gameOverScreen.style.display = 'none';
+      pauseMenu.style.display = 'none';
+      obstacleIntervals.forEach(clearInterval);
+      sugarIntervals.forEach(clearInterval);
+      obstacleIntervals = [];
+      sugarIntervals = [];
+      obstacles.forEach(o => o.remove());
+      sugarCubes.forEach(s => s.remove());
+      obstacles = [];
+      sugarCubes = [];
+      moving = false;
+      initGame();
+    }
+
+    function fullRestart() {
+      localStorage.setItem("bank", "100");
+      restartGame();
+    }
+  </script>
+</body>
+</html>

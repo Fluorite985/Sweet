@@ -41,7 +41,7 @@
     #player {
       width: 40px;
       height: 40px;
-      background-image: url('coffee-cup.png');
+      background-image: url('assets/coffee-cup.png');
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
@@ -77,7 +77,7 @@
     .obstacle {
       width: 40px;
       height: 30px;
-      background-image: url('/ant-obstacle.png');
+      background-image: url('assets/ant-obstacle.png');
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
@@ -85,7 +85,7 @@
     .sugar-cube {
       width: 20px;
       height: 20px;
-      background-image: url('/minecraft-sugar.png');
+      background-image: url('assets/minecraft-sugar.png');
       background-size: cover;
       background-repeat: no-repeat;
     }
@@ -201,10 +201,10 @@
     };
 
     const sounds = {
-      collect: new Audio('/collect.mp3'),
-      cashout: new Audio('/cashout.mp3'),
-      fail: new Audio('/fail.mp3'),
-      move: new Audio('/move.mp3'),
+      collect: new Audio('assets/collect.mp3'),
+      cashout: new Audio('assets/cashout.mp3'),
+      fail: new Audio('assets/fail.mp3'),
+      move: new Audio('assets/move.mp3'),
     };
 
     function playSound(audio) {

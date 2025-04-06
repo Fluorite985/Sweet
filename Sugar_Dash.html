@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sugar Dash: Balanced Royale</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #f3f4f6;
+      color: #333;
+      overflow: hidden;
+    }
+    button {
+      background: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 16px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #5b21b6;
+    }
+    #startScreen, #betInputScreen, #countdownOverlay, #gameOverPanel {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: rgba(250, 250, 250, 0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      z-index: 10;
+    }
+    #sidebar {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      width: 240px;
+      background: rgba(255, 255, 255, 0.85);
+      padding: 10px 15px;
+      border-radius: 10px;
+      border: 2px solid #7c3aed;
+      color: #333;
+      font-weight: bold;
+      z-index: 1;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #f9fafb;
+      border: 3px solid #7c3aed;
+      border-radius: 10px;
+    }
+    .popup {
+      position: absolute;
+      font-weight: bold;
+      color: #10b981;
+      font-size: 24px;
+      animation: floatUp 1s ease-out forwards;
+      pointer-events: none;
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-40px); }
+    }
+    .big-count {
+      font-size: 100px;
+      animation: pop 0.6s ease-in-out;
+    }
+    @keyframes pop {
+      from { transform: scale(0.5); opacity: 0.2; }
+      to { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="startScreen">
+    <h1>Sugar Stakes: Balanced Royale</h1>
+    <p>Collect sweets and cash out before the ant catches you!</p>
+    <button onclick="showBetInput()">Start Game</button>
+  </div>
+
+  <div id="countdownOverlay" style="display: none;">
+    <h1 id="countdown" class="big-count">🍬</h1>
+  </div>
+
+  <div id="betInputScreen" style="display: none;">
+    <h2>Enter Your Bet</h2>
+    <p id="currentBalance">Balance: $100.00</p>
+    <p id="lastRoundSummary"></p>
+    <input type="number" id="betInput" min="1" step="0.01" />
+    <button onclick="submitBet()">Submit</button>
+  </div>
+
+  <div id="ui" style="display: none;">
+    <div id="sidebar">
+      <p id="balance">Balance: $100.00</p>
+      <p id="bet">Bet: $10.00</p>
+      <p id="multiplier">Multiplier: x1.00</p>
+      <p id="timer">Time: 30s</p>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+  </div>
+
+  <script>
+    let balance = 100.00, bet = 10.00, multiplier = 1.0, timer = 30;
+    let timerInterval, gameLoop, gameEnded = false;
+    let player = { x: 400, y: 300, size: 30, speed: 4 };
+    let dentist = { x: 100, y: 100, size: 30 };
+    let keys = {}, sugarBlocks = [], cashoutZone = { x: 700, y: 500, size: 40 };
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function showBetInput() {
+      document.getElementById('startScreen').style.display = 'none';
+      document.getElementById('betInputScreen').style.display = 'flex';
+      document.getElementById('currentBalance').textContent = `Balance: ${balance.toFixed(2)}`;
+      document.getElementById('betInput').value = "";
+    }
+
+    function submitBet() {
+      const b = parseFloat(document.getElementById('betInput').value);
+      if (isNaN(b) || b <= 0 || b > balance) return alert("Invalid bet.");
+      bet = b;
+      balance -= bet;
+      updateUI();
+      document.getElementById('betInputScreen').style.display = 'none';
+      startCountdown();
+    }
+
+    function startCountdown() {
+      let count = 3, steps = ['🍬', '🍭', '🍫'];
+      const overlay = document.getElementById('countdownOverlay');
+      overlay.style.display = 'flex';
+      overlay.innerHTML = `<h1 class="big-count">${steps[0]}</h1>`;
+      const countdown = setInterval(() => {
+        count--;
+        if (count <= 0) {
+          clearInterval(countdown);
+          overlay.style.display = 'none';
+          startGame();
+        } else overlay.innerHTML = `<h1 class="big-count">${steps[3 - count]}</h1>`;
+      }, 1000);
+    }
+
+    function startGame() {
+      multiplier = 1.0; timer = 30; gameEnded = false;
+      player.x = 400; player.y = 300;
+      dentist.x = Math.random() * 700; dentist.y = Math.random() * 500;
+      sugarBlocks = []; for (let i = 0; i < 10; i++) addSugarBlock();
+      document.getElementById('ui').style.display = 'block';
+      gameLoop = setInterval(updateGame, 1000 / 60);
+      timerInterval = setInterval(() => {
+        if (!gameEnded) {
+          timer--;
+          document.getElementById('timer').textContent = `Time: ${timer}s`;
+          if (timer <= 0) endGame(false);
+        }
+      }, 1000);
+    }
+
+    function updateUI() {
+      document.getElementById('balance').textContent = `Balance: ${balance.toFixed(2)}`;
+      document.getElementById('bet').textContent = `Bet: ${bet.toFixed(2)}`;
+      document.getElementById('multiplier').textContent = `Multiplier: x${multiplier.toFixed(2)}`;
+    }
+
+    function updateGame() {
+      movePlayer(); moveDentist();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      sugarBlocks.forEach((sugar, i) => {
+        ctx.font = "40px serif";
+        ctx.fillText(sugar.emoji, sugar.x, sugar.y + 30);
+        if (isColliding(player, sugar)) {
+          multiplier *= sugar.value;
+          sugarBlocks.splice(i, 1); addSugarBlock();
+          createPopup(`×${sugar.value.toFixed(2)}`, sugar.x, sugar.y);
+        }
+      });
+      drawPlayer();
+      drawDentist();
+      drawCashout();
+      updateUI();
+      if (isColliding(player, cashoutZone)) endGame(true);
+      if (isColliding(player, dentist)) endGame(false);
+    }
+
+    function drawPlayer() {
+      ctx.font = "40px serif";
+      ctx.fillText("🦷", player.x, player.y + 30);
+    }
+
+    function drawDentist() {
+      ctx.fillStyle = "#000";
+      ctx.beginPath();
+      ctx.ellipse(dentist.x + dentist.size/2, dentist.y + dentist.size/2, dentist.size/2, dentist.size/3, 0, 0, 2*Math.PI);
+      ctx.fill();
+    }
+
+    function drawCashout() {
+      ctx.font = "30px serif";
+      ctx.fillText("🪥", cashoutZone.x, cashoutZone.y + 20);
+    }
+
+    function addSugarBlock() {
+      let rand = Math.random();
+      let val;
+      if (rand < 0.3) val = 0.5 + Math.random() * 0.5;
+      else if (rand < 0.9) val = 1.0 + Math.random() * 0.8;
+      else val = 1.8 + Math.random() * 0.2;
+      let emoji = ['🍩', '🍦', '🍬', '🍫', '🍪', '🍭'][Math.floor(Math.random() * 6)];
+      let x = Math.max(0, Math.min(760, Math.random() * 760));
+      let y = Math.max(0, Math.min(560, Math.random() * 560));
+      sugarBlocks.push({ x, y, size: 40, value: parseFloat(val.toFixed(2)), emoji });
+    }
+
+    function movePlayer() {
+      if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
+      if (keys['ArrowDown'] && player.y + player.size < canvas.height) player.y += player.speed;
+      if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+      if (keys['ArrowRight'] && player.x + player.size < canvas.width) player.x += player.speed;
+    }
+
+    function moveDentist() {
+      let dx = player.x - dentist.x, dy = player.y - dentist.y;
+      let d = Math.sqrt(dx * dx + dy * dy);
+      let speed = 2.5 + ((30 - timer) / 25) * 5;
+      dentist.x += (dx / d) * speed;
+      dentist.y += (dy / d) * speed;
+      dentist.x = Math.max(0, Math.min(canvas.width - dentist.size, dentist.x));
+      dentist.y = Math.max(0, Math.min(canvas.height - dentist.size, dentist.y));
+    }
+
+    function isColliding(a, b) {
+      return a.x < b.x + b.size && a.x + a.size > b.x && a.y < b.y + b.size && a.y + a.size > b.y;
+    }
+
+    function createPopup(text, x, y) {
+      const pop = document.createElement('div');
+      pop.className = 'popup';
+      pop.style.left = `${x}px`;
+      pop.style.top = `${y}px`;
+      pop.textContent = text;
+      document.body.appendChild(pop);
+      setTimeout(() => document.body.removeChild(pop), 1000);
+    }
+
+    function endGame(win) {
+      if (gameEnded) return;
+      gameEnded = true;
+      clearInterval(gameLoop); clearInterval(timerInterval);
+      const result = win ? bet * multiplier : 0;
+      let summary = win ? `🎉 You won ${result.toFixed(2)}!` : `💥 You lost ${bet.toFixed(2)}.`;
+      if (win) balance += result;
+      document.getElementById('lastRoundSummary').textContent = summary;
+      document.getElementById('ui').style.display = 'none';
+      showBetInput();
+    }
+
+    document.addEventListener("keydown", e => keys[e.key] = true);
+    document.addEventListener("keyup", e => keys[e.key] = false);
+  </script>
+</body>
+</html>

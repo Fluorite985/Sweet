@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SweetOdds</title>
+
+  <!-- Fun Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Chewy&family=Quicksand:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Quicksand', sans-serif;
+      background: url('jeff.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-weight: bold;
+      position: absolute;
+      top: 110px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 110px;
+      margin: 0;
+      z-index: 2;
+      background: linear-gradient(90deg, #f0edee, #f7f4f5, #f0efed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .tagline {
+      position: absolute;
+      top: 230px;
+      left: 54%;
+      transform: translateX(-50%);
+      font-size: 28px;
+      font-weight: bold;
+      font-style: italic;
+      color: black;
+      z-index: 2;
+    }
+
+    .game-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 25px;
+      justify-content: center;
+      margin-top: 250px;
+      z-index: 2;
+    }
+
+    .game-button {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 25px;
+      font-size: 20px;
+      font-weight: 600;
+      color: black;
+      text-decoration: none;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .game-button:hover {
+      transform: scale(1.08);
+      box-shadow: 0 10px 25px rgba(255, 255, 255, 0.4);
+    }
+
+    .kaboom {
+      background: linear-gradient(135deg, #ff4da6, #ff85a2);
+    }
+
+    .kaboom:hover {
+      background: linear-gradient(135deg, #ff85a2, #ffd6e7);
+      color: #2c003e;
+    }
+
+    .dash {
+      background: linear-gradient(135deg, #ffb347, #ffcc33);
+    }
+
+    .dash:hover {
+      background: linear-gradient(135deg, #ffe29a, #fff2cc);
+      color: #5b4100;
+    }
+
+    .cross {
+      background: linear-gradient(135deg, #7ee8fa, #80ffdb);
+    }
+
+    .cross:hover {
+      background: linear-gradient(135deg, #ccfff6, #e0fff9);
+      color: #003333;
+    }
+
+    .overdose {
+      background: linear-gradient(135deg, #a9746e, #c3a995);
+    }
+
+    .overdose:hover {
+      background: linear-gradient(135deg, #decbb7, #f2e8dc);
+      color: #3b2c2a;
+    }
+
+    .balance {
+      position: absolute;
+      top: 30px;
+      right: 50px;
+      font-size: 22px;
+      background-color: rgba(255, 255, 255, 0.3);
+      padding: 10px 20px;
+      border-radius: 10px;
+      color: black;
+      font-weight: bold;
+      z-index: 3;
+    }
+  </style>
+</head>
+<body>
+    <!-- 💰 Balance Add Section -->
+    <div class="topup-bar">
+      <input type="number" id="add-amount" placeholder="Enter amount" />
+      <button onclick="addBalance()">Add Balance</button>
+    </div>
+  
+    <!-- 💰 Balance Display -->
+    <div class="balance">Balance: ₹<span id="balance-amount">0</span></div>
+  
+    <!-- 🏠 Page Content -->
+    <h1>SweetOdds</h1>
+    <div class="tagline">So sweet it should be illegal...</div>
+  
+    <!-- 🎮 Game Buttons (unchanged) -->
+    <div class="game-options">
+      <a class="game-button kaboom" href="Candy-Kaboom.html">🍬 Candy Kaboom</a>
+      <a class="game-button dash" href="Sugar_Dash.html">🍭 Sugar Dash</a>
+      <a class="game-button cross" href="Candy_Cross.html">🍡 Candy Cross</a>
+      <a class="game-button overdose" href="Sugar_Overdose.html">🍫 Sugar Overdose</a>
+    </div>
+  
+    <!-- 🧠 Script Section -->
+    <script>
+      const BALANCE_KEY = "sugarBalance";
+  
+      if (localStorage.getItem(BALANCE_KEY) === null) {
+        localStorage.setItem(BALANCE_KEY, "1000");
+      }
+  
+      function updateBalance() {
+        const balance = localStorage.getItem(BALANCE_KEY);
+        document.getElementById("balance-amount").textContent = balance;
+      }
+  
+      function addBalance() {
+        const input = document.getElementById("add-amount");
+        const amount = parseInt(input.value);
+        if (!isNaN(amount) && amount > 0) {
+          let current = parseInt(localStorage.getItem(BALANCE_KEY));
+          localStorage.setItem(BALANCE_KEY, current + amount);
+          updateBalance();
+          input.value = ""; // clear field
+        } else {
+          alert("Please enter a valid amount!");
+        }
+      }
+  
+      updateBalance();
+    </script>
+  
+    <style>
+      .topup-bar {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.2);
+        padding: 10px 20px;
+        border-radius: 15px;
+        backdrop-filter: blur(5px);
+        z-index: 4;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+  
+      .topup-bar input {
+        padding: 8px 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        width: 120px;
+      }
+  
+      .topup-bar button {
+        background: #fff176;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 15px;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+  
+      .topup-bar button:hover {
+        background: #ffeb3b;
+      }
+    </style>
+  </body>
+  
+</html>
